@@ -83,32 +83,54 @@ local EmoteWheel = {
     LastTrack = nil,
     Buttons = {},
     Pages = {
-        {
-            {name = "Griddy", id = 71864055176836},
-            {name = "TakeTheL", id = 107795487146601},
-            {name = "SnoopsWalk", id = 110204898807330},
-            {name = "ElectroShuffle", id = 138727713064496},
-            {name = "Twerk", id = 71683179159204},
-            {name = "PopularVibe", id = 93062298566806},
-            {name = "OrangeJustice", id = 95127716920692},
-            {name = "Floss", id = 80550101607592},
-            {name = "Fresh", id = 137039451581216}
-        },
-        {
-            {name = "CaliforniaGirls", id = 96463900850916},
-            {name = "GetSturdy", id = 102571052202995},
-            {name = "CoffinWalkout", id = 126771729094882},
-            {name = "TheRobot", id = 83514960413286},
-            {name = "RusDance", id = 119473524290403},
-            {name = "SlalomStyle", id = 137139412185781},
-            {name = "Zany", id = 90683763183723},
-            {name = "ElectroSwing", id = 137750876111662},
-            {name = "BillyBounce", id = 133394554631338}
-        }
+    {
+        {name = "Griddy", id = 71864055176836},
+        {name = "TakeTheL", id = 107795487146601},
+        {name = "SnoopsWalk", id = 110204898807330},
+        {name = "ElectroShuffle", id = 138727713064496},
+        {name = "Twerk", id = 71683179159204},
+        {name = "PopularVibe", id = 93062298566806},
+        {name = "OrangeJustice", id = 95127716920692},
+        {name = "Floss", id = 80550101607592},
+        {name = "Fresh", id = 137039451581216}
     },
+    {
+        {name = "CaliforniaGirls", id = 96463900850916},
+        {name = "GetSturdy", id = 102571052202995},
+        {name = "CoffinWalkout", id = 126771729094882},
+        {name = "TheRobot", id = 83514960413286},
+        {name = "RusDance", id = 119473524290403},
+        {name = "SlalomStyle", id = 137139412185781},
+        {name = "Zany", id = 90683763183723},
+        {name = "ElectroSwing", id = 137750876111662},
+        {name = "BillyBounce", id = 133394554631338}
+    },
+	{
+        {name = "DiscoFever", id = 77383821395491},
+        {name = "Condition", id = 107828342516230},
+        {name = "Drunk", id = 95689071082560},
+        {name = "Rollie", id = 125146305865250},
+        {name = "Xavier", id = 111079103818250},
+        {name = "Flying", id = 127571436160081},
+        {name = "Backflip", id = 133675142555339},
+        {name = "FestaNoBrasil", id = 82516443009513},
+        {name = "RideDaPony", id = 119284187579961}
+	},
+	{
+        {name = "PeacemakerBounce", id = 111906563478881},
+        {name = "WhatYouWant", id = 115781688996859},
+        {name = "RaceCar", id = 72382226286301},
+        {name = "IcySpicyJumping", id = 118896295981144},
+        {name = "Shake", id = 103913447080306},
+        {name = "BoogieDown", id = 99662142344622},
+        {name = "DefaultDance", id = 101011728520473},
+        {name = "Rambunctious", id = 129991743366120},
+        {name = "Macaroni", id = 71693227925289}
+	},
     PageText = nil,
     PreviousMouseBehavior = nil,
     PreviousMouseIconEnabled = nil
+	}
 }
 
 --// Bind List Variables
