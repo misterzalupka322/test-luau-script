@@ -1,0 +1,369 @@
+-- Инжектор скрипт для применения костюма в Dead By ROBLOX
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
+local Network = ReplicatedStorage:WaitForChild("RemoteEvents")
+local Data_Event = Network:WaitForChild("Data_Event")
+
+-- Создаем GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "CosmeticInjectorGUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+ScreenGui.Parent = PlayerGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 350, 0, 280)
+MainFrame.Position = UDim2.new(0.5, -175, 0.5, -140)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Color3.fromRGB(100, 100, 100)
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Selectable = true
+MainFrame.Visible = true
+MainFrame.Parent = ScreenGui
+
+local UICornerMain = Instance.new("UICorner")
+UICornerMain.CornerRadius = UDim.new(0, 8)
+UICornerMain.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Title.Text = "Cosmetic Injector v1.1"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.GothamBold
+Title.Parent = MainFrame
+
+local UICornerTitle = Instance.new("UICorner")
+UICornerTitle.CornerRadius = UDim.new(0, 8)
+UICornerTitle.Parent = Title
+
+-- Выбор стороны
+local SideLabel = Instance.new("TextLabel")
+SideLabel.Size = UDim2.new(0.8, 0, 0, 20)
+SideLabel.Position = UDim2.new(0.1, 0, 0.15, 0)
+SideLabel.BackgroundTransparency = 1
+SideLabel.Text = "Select Side:"
+SideLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+SideLabel.Font = Enum.Font.Gotham
+SideLabel.TextXAlignment = Enum.TextXAlignment.Left
+SideLabel.Parent = MainFrame
+
+local SideDropdown = Instance.new("TextButton")
+SideDropdown.Size = UDim2.new(0.8, 0, 0, 25)
+SideDropdown.Position = UDim2.new(0.1, 0, 0.2, 0)
+SideDropdown.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+SideDropdown.Text = "Survivor ▼"
+SideDropdown.TextColor3 = Color3.fromRGB(255, 255, 255)
+SideDropdown.Font = Enum.Font.Gotham
+SideDropdown.ZIndex = 5
+SideDropdown.Parent = MainFrame
+
+local SideFrame = Instance.new("Frame")
+SideFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+SideFrame.BorderSizePixel = 1
+SideFrame.BorderColor3 = Color3.fromRGB(80, 80, 80)
+SideFrame.Visible = false
+SideFrame.ZIndex = 100
+SideFrame.Parent = ScreenGui
+
+local SurvivorOption = Instance.new("TextButton")
+SurvivorOption.Size = UDim2.new(1, 0, 0, 25)
+SurvivorOption.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+SurvivorOption.Text = "Survivor"
+SurvivorOption.TextColor3 = Color3.fromRGB(255, 255, 255)
+SurvivorOption.Font = Enum.Font.Gotham
+SurvivorOption.ZIndex = 101
+SurvivorOption.Parent = SideFrame
+
+local KillerOption = Instance.new("TextButton")
+KillerOption.Size = UDim2.new(1, 0, 0, 25)
+KillerOption.Position = UDim2.new(0, 0, 0, 25)
+KillerOption.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+KillerOption.Text = "Killer"
+KillerOption.TextColor3 = Color3.fromRGB(255, 255, 255)
+KillerOption.Font = Enum.Font.Gotham
+KillerOption.ZIndex = 101
+KillerOption.Parent = SideFrame
+
+-- Выбор костюма
+local CosmeticLabel = Instance.new("TextLabel")
+CosmeticLabel.Size = UDim2.new(0.8, 0, 0, 20)
+CosmeticLabel.Position = UDim2.new(0.1, 0, 0.35, 0)
+CosmeticLabel.BackgroundTransparency = 1
+CosmeticLabel.Text = "Select Cosmetic:"
+CosmeticLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+CosmeticLabel.Font = Enum.Font.Gotham
+CosmeticLabel.TextXAlignment = Enum.TextXAlignment.Left
+CosmeticLabel.Parent = MainFrame
+
+local CosmeticDropdown = Instance.new("TextButton")
+CosmeticDropdown.Size = UDim2.new(0.8, 0, 0, 25)
+CosmeticDropdown.Position = UDim2.new(0.1, 0, 0.4, 0)
+CosmeticDropdown.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+CosmeticDropdown.Text = "Select Cosmetic ▼"
+CosmeticDropdown.TextColor3 = Color3.fromRGB(255, 255, 255)
+CosmeticDropdown.Font = Enum.Font.Gotham
+CosmeticDropdown.ZIndex = 5
+CosmeticDropdown.Parent = MainFrame
+
+local CosmeticFrame = Instance.new("ScrollingFrame")
+CosmeticFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+CosmeticFrame.BorderSizePixel = 1
+CosmeticFrame.BorderColor3 = Color3.fromRGB(80, 80, 80)
+CosmeticFrame.Visible = false
+CosmeticFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+CosmeticFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+CosmeticFrame.ZIndex = 100
+CosmeticFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 5)
+UICorner.Parent = CosmeticFrame
+
+-- Чекбоксы
+local BodyPartsFrame = Instance.new("Frame")
+BodyPartsFrame.Size = UDim2.new(0.8, 0, 0, 50)
+BodyPartsFrame.Position = UDim2.new(0.1, 0, 0.6, 0)
+BodyPartsFrame.BackgroundTransparency = 1
+BodyPartsFrame.Parent = MainFrame
+
+local BodyPartsLabel = Instance.new("TextLabel")
+BodyPartsLabel.Size = UDim2.new(1, 0, 0, 20)
+BodyPartsLabel.BackgroundTransparency = 1
+BodyPartsLabel.Text = "Body Parts:"
+BodyPartsLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+BodyPartsLabel.Font = Enum.Font.Gotham
+BodyPartsLabel.TextXAlignment = Enum.TextXAlignment.Left
+BodyPartsLabel.Parent = BodyPartsFrame
+
+local HeadCheckbox = Instance.new("TextButton")
+HeadCheckbox.Size = UDim2.new(0.3, 0, 0, 25)
+HeadCheckbox.Position = UDim2.new(0, 0, 0, 25)
+HeadCheckbox.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+HeadCheckbox.Text = "✓ Head"
+HeadCheckbox.TextColor3 = Color3.fromRGB(0, 255, 0)
+HeadCheckbox.Font = Enum.Font.Gotham
+HeadCheckbox.Parent = BodyPartsFrame
+
+local TorsoCheckbox = Instance.new("TextButton")
+TorsoCheckbox.Size = UDim2.new(0.3, 0, 0, 25)
+TorsoCheckbox.Position = UDim2.new(0.35, 0, 0, 25)
+TorsoCheckbox.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+TorsoCheckbox.Text = "✓ Torso"
+TorsoCheckbox.TextColor3 = Color3.fromRGB(0, 255, 0)
+TorsoCheckbox.Font = Enum.Font.Gotham
+TorsoCheckbox.Parent = BodyPartsFrame
+
+local LegsCheckbox = Instance.new("TextButton")
+LegsCheckbox.Size = UDim2.new(0.3, 0, 0, 25)
+LegsCheckbox.Position = UDim2.new(0.7, 0, 0, 25)
+LegsCheckbox.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+LegsCheckbox.Text = "✓ Legs"
+LegsCheckbox.TextColor3 = Color3.fromRGB(0, 255, 0)
+LegsCheckbox.Font = Enum.Font.Gotham
+LegsCheckbox.Parent = BodyPartsFrame
+
+local WeaponCheckbox = Instance.new("TextButton")
+WeaponCheckbox.Size = UDim2.new(0.3, 0, 0, 25)
+WeaponCheckbox.Position = UDim2.new(0.35, 0, 0, 25)
+WeaponCheckbox.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+WeaponCheckbox.Text = "✓ Weapon"
+WeaponCheckbox.TextColor3 = Color3.fromRGB(0, 255, 0)
+WeaponCheckbox.Font = Enum.Font.Gotham
+WeaponCheckbox.Visible = false
+WeaponCheckbox.Parent = BodyPartsFrame
+
+local ApplyButton = Instance.new("TextButton")
+ApplyButton.Size = UDim2.new(0.8, 0, 0, 35)
+ApplyButton.Position = UDim2.new(0.1, 0, 0.8, 0)
+ApplyButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+ApplyButton.Text = "APPLY COSMETIC"
+ApplyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ApplyButton.Font = Enum.Font.GothamBold
+ApplyButton.Parent = MainFrame
+
+local UICornerApply = Instance.new("UICorner")
+UICornerApply.CornerRadius = UDim.new(0, 5)
+UICornerApply.Parent = ApplyButton
+
+-- Переменные
+local selectedSide = "Survivor"
+local selectedCosmetic = ""
+local selectedBodyParts = {Head = true, Torso = true, Legs = true}
+
+-- ФУНКЦИЯ ИСПРАВЛЕНИЯ РАЗМЕРА И ПОЗИЦИИ
+local function updateDropdownPosition(dropdownFrame, anchorButton)
+    if not dropdownFrame.Visible then return end
+    
+    local buttonPos = anchorButton.AbsolutePosition
+    local buttonSize = anchorButton.AbsoluteSize
+    
+    -- Устанавливаем ширину точно как у кнопки
+    local targetWidth = buttonSize.X
+    local targetHeight = (dropdownFrame == SideFrame) and 50 or 150
+    
+    dropdownFrame.Size = UDim2.new(0, targetWidth, 0, targetHeight)
+    dropdownFrame.Position = UDim2.new(0, buttonPos.X, 0, buttonPos.Y + buttonSize.Y)
+end
+
+local function updateAllDropdownPositions()
+    updateDropdownPosition(SideFrame, SideDropdown)
+    updateDropdownPosition(CosmeticFrame, CosmeticDropdown)
+end
+
+RunService.RenderStepped:Connect(updateAllDropdownPositions)
+
+local function toggleDropdown(frame, button)
+    if frame.Visible then
+        frame.Visible = false
+        button.Text = string.gsub(button.Text, " ▲", " ▼")
+    else
+        SideFrame.Visible = false
+        CosmeticFrame.Visible = false
+        SideDropdown.Text = string.gsub(SideDropdown.Text, " ▲", " ▼")
+        CosmeticDropdown.Text = string.gsub(CosmeticDropdown.Text, " ▲", " ▼")
+        
+        frame.Visible = true
+        button.Text = string.gsub(button.Text, " ▼", " ▲")
+        updateAllDropdownPositions()
+    end
+end
+
+local function updateCosmeticList(side)
+    CosmeticFrame:ClearAllChildren()
+    local cosmeticsFolder = ReplicatedStorage:WaitForChild("Game_Data"):WaitForChild("Cosmetics"):WaitForChild(side)
+    local yOffset = 0
+    local cosmeticsList = {}
+    for _, cosmetic in pairs(cosmeticsFolder:GetChildren()) do table.insert(cosmeticsList, cosmetic.Name) end
+    table.sort(cosmeticsList)
+    
+    for _, cosmeticName in pairs(cosmeticsList) do
+        local option = Instance.new("TextButton")
+        option.Size = UDim2.new(1, 0, 0, 25)
+        option.Position = UDim2.new(0, 0, 0, yOffset)
+        option.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        option.Text = cosmeticName
+        option.TextColor3 = Color3.fromRGB(255, 255, 255)
+        option.Font = Enum.Font.Gotham
+        option.ZIndex = 101
+        option.Parent = CosmeticFrame
+        option.MouseButton1Click:Connect(function()
+            selectedCosmetic = cosmeticName
+            CosmeticDropdown.Text = cosmeticName .. " ▼"
+            CosmeticFrame.Visible = false
+        end)
+        yOffset = yOffset + 25
+    end
+    CosmeticFrame.CanvasSize = UDim2.new(0, 0, 0, yOffset)
+end
+
+local function updateBodyPartsForSide(side)
+    if side == "Survivor" then
+        -- Видимость для Survivor
+        HeadCheckbox.Visible = true
+        TorsoCheckbox.Visible = true
+        LegsCheckbox.Visible = true
+        WeaponCheckbox.Visible = false
+        
+        -- Позиции для Survivor
+        HeadCheckbox.Position = UDim2.new(0, 0, 0, 25)
+        TorsoCheckbox.Position = UDim2.new(0.35, 0, 0, 25)
+        LegsCheckbox.Position = UDim2.new(0.7, 0, 0, 25)
+        
+        selectedBodyParts = {Head = true, Torso = true, Legs = true}
+    else
+        -- Видимость для Killer
+        HeadCheckbox.Visible = true
+        TorsoCheckbox.Visible = true
+        LegsCheckbox.Visible = false
+        WeaponCheckbox.Visible = true
+        
+        -- Позиции для Killer (Weapon встает на место Legs)
+        HeadCheckbox.Position = UDim2.new(0, 0, 0, 25)
+        TorsoCheckbox.Position = UDim2.new(0.35, 0, 0, 25)
+        WeaponCheckbox.Position = UDim2.new(0.7, 0, 0, 25)
+        
+        selectedBodyParts = {Head = true, Torso = true, Weapon = true}
+    end
+
+    -- Сброс текста и цвета для всех
+    local boxes = {HeadCheckbox, TorsoCheckbox, LegsCheckbox, WeaponCheckbox}
+    local names = {"Head", "Torso", "Legs", "Weapon"}
+    
+    for i, box in ipairs(boxes) do
+        box.TextColor3 = Color3.fromRGB(0, 255, 0)
+        box.Text = "✓ " .. names[i]
+    end
+end
+
+local function toggleBodyPart(part)
+    selectedBodyParts[part] = not selectedBodyParts[part]
+    local btn = (part == "Head" and HeadCheckbox) or (part == "Torso" and TorsoCheckbox) or (part == "Legs" and LegsCheckbox) or (part == "Weapon" and WeaponCheckbox)
+    if selectedBodyParts[part] then
+        btn.Text, btn.TextColor3 = "✓ " .. part, Color3.fromRGB(0, 255, 0)
+    else
+        btn.Text, btn.TextColor3 = "✗ " .. part, Color3.fromRGB(255, 50, 50)
+    end
+end
+
+local function applyCosmetic()
+    if selectedCosmetic == "" then return end
+    local bodyParts = {}
+    for part, selected in pairs(selectedBodyParts) do if selected then table.insert(bodyParts, part) end end
+    if #bodyParts == 0 then return end
+    
+    Data_Event:FireServer("Loadout", "Cosmetic", selectedSide, selectedCosmetic, bodyParts)
+    
+    ApplyButton.Text = "APPLIED!"
+    ApplyButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+    task.wait(1)
+    ApplyButton.Text = "APPLY COSMETIC"
+    ApplyButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+end
+
+SideDropdown.MouseButton1Click:Connect(function() toggleDropdown(SideFrame, SideDropdown) end)
+CosmeticDropdown.MouseButton1Click:Connect(function() toggleDropdown(CosmeticFrame, CosmeticDropdown) end)
+
+SurvivorOption.MouseButton1Click:Connect(function()
+    selectedSide = "Survivor"
+    SideDropdown.Text = "Survivor ▼"
+    SideFrame.Visible = false
+    updateCosmeticList("Survivor")
+    updateBodyPartsForSide("Survivor")
+    selectedCosmetic = ""
+    CosmeticDropdown.Text = "Select Cosmetic ▼"
+end)
+
+KillerOption.MouseButton1Click:Connect(function()
+    selectedSide = "Killer"
+    SideDropdown.Text = "Killer ▼"
+    SideFrame.Visible = false
+    updateCosmeticList("Killer")
+    updateBodyPartsForSide("Killer")
+    selectedCosmetic = ""
+    CosmeticDropdown.Text = "Select Cosmetic ▼"
+end)
+
+HeadCheckbox.MouseButton1Click:Connect(function() toggleBodyPart("Head") end)
+TorsoCheckbox.MouseButton1Click:Connect(function() toggleBodyPart("Torso") end)
+LegsCheckbox.MouseButton1Click:Connect(function() toggleBodyPart("Legs") end)
+WeaponCheckbox.MouseButton1Click:Connect(function() toggleBodyPart("Weapon") end)
+ApplyButton.MouseButton1Click:Connect(applyCosmetic)
+
+UserInputService.InputBegan:Connect(function(input, processed)
+    if input.KeyCode == Enum.KeyCode.RightAlt then
+        MainFrame.Visible = not MainFrame.Visible
+        if not MainFrame.Visible then SideFrame.Visible = false; CosmeticFrame.Visible = false end
+    end
+end)
+
+updateCosmeticList("Survivor")
+updateBodyPartsForSide("Survivor")
