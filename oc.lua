@@ -1,4 +1,3 @@
--- Инжектор скрипт для применения костюма в Dead By ROBLOX
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -366,4 +365,5 @@ UserInputService.InputBegan:Connect(function(input, processed)
 end)
 
 updateCosmeticList("Survivor")
+
 updateBodyPartsForSide("Survivor")
