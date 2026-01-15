@@ -1488,34 +1488,11 @@ local function toggleNoclip()
     end
 end
 
---// Функция для Stun Killer (ИСПРАВЛЕН БИНД)
+--// Функция для Stun Killer (исправленная - применяется при каждом нажатии бинда)
 local stunKillerEnabled = false
-local stunKillerConnection
+local stunKillerConnection = nil
 
-local function toggleStunKiller()
-    stunKillerEnabled = not stunKillerEnabled
-    
-    if stunKillerConnection then
-        stunKillerConnection:Disconnect()
-        stunKillerConnection = nil
-    end
-    
-    if stunKillerEnabled then
-        stunKillerConnection = UserInputService.InputBegan:Connect(function(input, Chat)
-            if Chat then return end
-            
-            -- Проверяем, что нажата клавиша, которая привязана к Stun Killer
-            -- Бинд будет управляться через UI AddKey
-            if input.UserInputType == Enum.UserInputType.Keyboard then
-                -- Проверяем, совпадает ли нажатая клавиша с сохраненным биндом
-                -- Эта проверка будет в callback функции AddKey
-            end
-        end)
-    end
-end
-
--- Отдельная функция для применения стана (вызывается из callback)
-local function applyStunKiller()
+local function applyStunKillerNow()
     if not stunKillerEnabled then return end
     
     local RemoteStorage = game:GetService('ReplicatedStorage'):WaitForChild('RemoteEvents')
@@ -1553,15 +1530,38 @@ local function applyStunKiller()
         Cheat:FireServer(tablev)
     end
     
-    for _, b in pairs(game.Players:GetPlayers()) do
-        if b.Team and b.Team.Name:lower():find("killer") then
-            if b.Backpack and b.Backpack:FindFirstChild("Scripts") then
-                local scripts = b.Backpack.Scripts
-                if scripts and scripts:FindFirstChild("values") then
-                    local values = scripts.values
-                    if values and values:FindFirstChild("Stunned") then
-                        Obfuscate("string", values.Stunned.Kind, "Wiggle")
-                        Obfuscate("bool", values.Stunned, true)
+    -- Станим всех убийц
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local isKiller = false
+            
+            -- Проверяем команду разными способами
+            if player.Team and player.Team.Name:lower():find("killer") then
+                isKiller = true
+            else
+                local role = player:GetAttribute("Role") or player:GetAttribute("Team")
+                if role and tostring(role):lower():find("killer") then
+                    isKiller = true
+                end
+            end
+            
+            if isKiller then
+                -- Ищем объекты с дополнительными проверками
+                local backpack = player:FindFirstChild("Backpack")
+                if backpack then
+                    local scripts = backpack:FindFirstChild("Scripts")
+                    if scripts then
+                        local values = scripts:FindFirstChild("values")
+                        if values then
+                            local stunned = values:FindFirstChild("Stunned")
+                            if stunned then
+                                -- Применяем стан только если нашли все объекты
+                                if stunned:FindFirstChild("Kind") then
+                                    Obfuscate("string", stunned.Kind, "Wiggle")
+                                end
+                                Obfuscate("bool", stunned, true)
+                            end
+                        end
                     end
                 end
             end
@@ -4359,19 +4359,68 @@ AddPlayerAction(SurvivorSide, "Hit Someone", function(players, isAll)
 end)
 
 AddKey(SurvivorSide, "Stun Killer", {
-    mode = "Toggle",  -- Изменено с Hold на Toggle
+    mode = "Toggle",
     callback = function(state)
+        -- Включаем/выключаем функцию
+        stunKillerEnabled = state
+        
+        -- Если функция включена, применяем стан сразу при нажатии
         if state == true then
-            -- Включаем режим стана при нажатии бинда
-            stunKillerEnabled = true
-            -- Применяем стан сразу
-            applyStunKiller()
+            applyStunKillerNow()
+            
+            -- Создаем соединение, которое будет применять стан при каждом последующем нажатии бинда
+            if stunKillerConnection then
+                stunKillerConnection:Disconnect()
+            end
+            
+            -- Соединение для отслеживания нажатий клавиши
+            local keyPressed = false
+            stunKillerConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+                if gameProcessed or not stunKillerEnabled then return end
+                
+                -- Получаем текущий бинд из UI элемента (нужно найти его в UI_Elements.Keys)
+                local elementId = "Stun Killer_Key"
+                local keyElement = UI_Elements.Keys[elementId]
+                if keyElement and keyElement.getState then
+                    local state = keyElement.getState()
+                    local currentKey = Enum.KeyCode[state.key]
+                    
+                    -- Проверяем, что нажата именно эта клавиша
+                    if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == currentKey then
+                        if not keyPressed then
+                            keyPressed = true
+                            applyStunKillerNow()
+                        end
+                    end
+                end
+            end)
+            
+            -- Сбрасываем флаг при отпускании клавиши
+            local keyUpConnection = UserInputService.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.Keyboard then
+                    keyPressed = false
+                end
+            end)
+            
+            -- Сохраняем соединение для очистки
+            table.insert(stunKillerConnection, keyUpConnection)
         else
-            -- Выключаем режим стана
-            stunKillerEnabled = false
+            -- Отключаем соединения при выключении
+            if stunKillerConnection then
+                if type(stunKillerConnection) == "table" then
+                    for _, conn in ipairs(stunKillerConnection) do
+                        if conn then
+                            conn:Disconnect()
+                        end
+                    end
+                else
+                    stunKillerConnection:Disconnect()
+                end
+                stunKillerConnection = nil
+            end
         end
     end,
-    onlyToggle = true  -- Изменено с onlyHold на onlyToggle
+    onlyToggle = true
 })
 
 local KillerSide = AddPanel(R_Right, "Killer Side")
