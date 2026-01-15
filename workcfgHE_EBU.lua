@@ -1780,11 +1780,12 @@ local function teleportForward()
     char:PivotTo(CFrame.new(newPos + Vector3.new(0,2,0)) * char:GetPivot().Rotation)
 end
 
--- NAF - агрессивный вариант без остановки анимаций
+-- NAF (No Anims Freeze) - только Toggle режим
 local nafEnabled = false
 local nafConnection = nil
-local nafLastWalkSpeed = 16
-local nafLastJumpPower = 50
+local nafMonitorConnection = nil
+local nafLastPlatformStand = false
+local nafLastAnchored = false
 
 local function updateNAF(enabled)
     nafEnabled = enabled
@@ -1794,73 +1795,84 @@ local function updateNAF(enabled)
         nafConnection = nil
     end
     
+    if nafMonitorConnection then
+        nafMonitorConnection:Disconnect()
+        nafMonitorConnection = nil
+    end
+    
     if enabled then
-        -- Сохраняем текущие значения при включении
-        local character = LocalPlayer.Character
-        if character then
-            local humanoid = character:FindFirstChildOfClass("Humanoid")
-            if humanoid then
-                if humanoid.WalkSpeed > 0 then
-                    nafLastWalkSpeed = humanoid.WalkSpeed
-                end
-                if humanoid.JumpPower > 0 then
-                    nafLastJumpPower = humanoid.JumpPower
-                end
-            end
-        end
-        
-        nafConnection = RunService.RenderStepped:Connect(function()
-            local character = LocalPlayer.Character
-            if not character then return end
+        nafConnection = RunService.Heartbeat:Connect(function()
+            local player = Players.LocalPlayer
+            local char = player.Character
+            if not char then return end
             
-            -- Ищем все Humanoid'ы
-            for _, humanoid in pairs(character:GetDescendants()) do
-                if humanoid:IsA("Humanoid") then
-                    -- Сохраняем текущие положительные значения
-                    if humanoid.WalkSpeed > 0 then
-                        nafLastWalkSpeed = humanoid.WalkSpeed
-                    end
-                    
-                    if humanoid.JumpPower > 0 then
-                        nafLastJumpPower = humanoid.JumpPower
-                    end
-                    
-                    -- Восстанавливаем нулевые значения до сохраненных
-                    if humanoid.WalkSpeed == 0 then
-                        humanoid.WalkSpeed = nafLastWalkSpeed
-                    end
-                    
-                    if humanoid.JumpPower == 0 then
-                        humanoid.JumpPower = nafLastJumpPower
-                    end
-                    
-                    -- Предотвращаем другие ограничения движения
-                    humanoid.PlatformStand = false
-                    humanoid.AutoRotate = true
-                    
-                    -- Предотвращаем состояния, которые блокируют движение
-                    local state = humanoid:GetState()
-                    if state == Enum.HumanoidStateType.FallingDown or
-                       state == Enum.HumanoidStateType.Ragdoll or
-                       state == Enum.HumanoidStateType.PlatformStanding then
-                        humanoid:ChangeState(Enum.HumanoidStateType.Running)
-                    end
-                end
-            end
+            local humanoid = char:FindFirstChildOfClass("Humanoid")
+            local rootPart = char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart
             
-            -- Работаем с корневой частью
-            local rootPart = character:FindFirstChild("HumanoidRootPart")
-            if rootPart then
+            if humanoid and rootPart then
+                -- Сохраняем состояния только при первом включении
+                if not nafLastPlatformStand and not nafLastAnchored then
+                    nafLastPlatformStand = humanoid.PlatformStand
+                    nafLastAnchored = rootPart.Anchored
+                end
+                
+                -- Включаем движение
+                humanoid.PlatformStand = false
                 rootPart.Anchored = false
                 rootPart.CanCollide = true
+                
+                -- Принудительно меняем состояние
+                humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
+                task.wait(0.05)
+                humanoid:ChangeState(Enum.HumanoidStateType.Running)
             end
         end)
         
-        warn("[NAF] Включена - защита от ограничений движения")
+        -- Мониторинг для поддержания состояния
+        nafMonitorConnection = RunService.Heartbeat:Connect(function()
+            local player = Players.LocalPlayer
+            local char = player.Character
+            if not char then return end
+            
+            local humanoid = char:FindFirstChildOfClass("Humanoid")
+            local rootPart = char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart
+            
+            if humanoid and rootPart then
+                if humanoid.PlatformStand == true then
+                    humanoid.PlatformStand = false
+                end
+                
+                if rootPart.Anchored == true then
+                    rootPart.Anchored = false
+                end
+            end
+        end)
     else
-        warn("[NAF] Выключена")
+        -- Восстанавливаем предыдущие состояния
+        local player = Players.LocalPlayer
+        local char = player.Character
+        if char then
+            local humanoid = char:FindFirstChildOfClass("Humanoid")
+            local rootPart = char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart
+            
+            if humanoid then
+                humanoid.PlatformStand = nafLastPlatformStand
+            end
+            
+            if rootPart then
+                rootPart.Anchored = nafLastAnchored
+            end
+            
+            if humanoid then
+                humanoid:ChangeState(Enum.HumanoidStateType.Running)
+            end
+            
+            nafLastPlatformStand = false
+            nafLastAnchored = false
+        end
     end
 end
+
 
 --// Emote Wheel (VISUAL 1:1 REPLICA + FIXED LOGIC)
 local emoteWheelGui = nil
