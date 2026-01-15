@@ -1,4 +1,4 @@
-﻿-- Hyperion UI Remake v7 (Fixed Transparency & CanvasGroup)
+-- Hyperion UI Remake v7 (Fixed Transparency & CanvasGroup)
 -- Optimized for Roblox
 -- Updated with ESP Modules
 -- Added: FOV Changer, Aspect Ratio Changer, Free Camera, Flash Progress, Inf Item Charges
@@ -1397,9 +1397,8 @@ local function hitPlayer(player)
     end
 end
 
---// Функции для Fly и Noclip
+--// Функции для Fly
 local flyEnabled = false
-local noclipEnabled = false
 local flyConnection, noclipConnection
 
 local function toggleFlight()
@@ -1450,109 +1449,122 @@ local function toggleFlight()
     end
 end
 
+local noclipEnabled = false
+local noclipConnection = nil
+
 local function toggleNoclip()
     noclipEnabled = not noclipEnabled
     
-    local function isBodyPart(part)
-        local bodyParts = {
-            "Head", "Torso", "LeftArm", "RightArm", "LeftLeg", "RightLeg",
-            "UpperTorso", "LowerTorso", "LeftUpperArm", "RightUpperArm",
-            "LeftLowerArm", "RightLowerArm", "LeftUpperLeg", "RightUpperLeg",
-            "LeftLowerLeg", "RightLowerLeg", "HumanoidRootPart"
-        }
-        
-        for _, bodyPartName in ipairs(bodyParts) do
-            if part.Name == bodyPartName then return true end
-        end
-        return false
-    end
-    
-    local function noclipLoop()
-        if noclipEnabled and LocalPlayer.Character then
-            for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
-                if part:IsA("BasePart") and isBodyPart(part) then
-                    part.CanCollide = false
-                end
-            end
-        end
+    if noclipConnection then
+        noclipConnection:Disconnect()
+        noclipConnection = nil
     end
     
     if noclipEnabled then
-        noclipConnection = game:GetService("RunService").Stepped:Connect(noclipLoop)
-    else
-        if noclipConnection then
-            noclipConnection:Disconnect()
-            noclipConnection = nil
-        end
-        
-        if LocalPlayer.Character then
-            for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
-                if part:IsA("BasePart") and isBodyPart(part) then
-                    part.CanCollide = true
+        noclipConnection = game:GetService("RunService").Stepped:Connect(function()
+            local character = LocalPlayer.Character
+            if character then
+                -- Агрессивно отключаем ВСЕ коллизии
+                for _, part in ipairs(character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                        part.CanTouch = false
+                        part.CanQuery = false
+                        
+                        -- Используем сеттеры через pcall для обхода защиты
+                        pcall(function() part.CollisionGroupId = 0 end)
+                    end
+                end
+                
+                -- Также для объектов в радиусе 50 studs
+                for _, obj in ipairs(workspace:GetChildren()) do
+                    if obj:IsA("BasePart") and (obj.Position - character:GetPivot().Position).Magnitude < 50 then
+                        obj.CanCollide = false
+                        obj.CanTouch = false
+                    end
                 end
             end
-        end
+        end)
     end
 end
 
---// Функция для Stun Killer (только Toggle)
+--// Функция для Stun Killer (ИСПРАВЛЕН БИНД)
 local stunKillerEnabled = false
 local stunKillerConnection
 
 local function toggleStunKiller()
     stunKillerEnabled = not stunKillerEnabled
     
+    if stunKillerConnection then
+        stunKillerConnection:Disconnect()
+        stunKillerConnection = nil
+    end
+    
     if stunKillerEnabled then
-        local RemoteStorage = game:GetService('ReplicatedStorage'):WaitForChild('RemoteEvents')
-        local Cheat = RemoteStorage:WaitForChild('NewPropertie')
+        stunKillerConnection = UserInputService.InputBegan:Connect(function(input, Chat)
+            if Chat then return end
+            
+            -- Проверяем, что нажата клавиша, которая привязана к Stun Killer
+            -- Бинд будет управляться через UI AddKey
+            if input.UserInputType == Enum.UserInputType.Keyboard then
+                -- Проверяем, совпадает ли нажатая клавиша с сохраненным биндом
+                -- Эта проверка будет в callback функции AddKey
+            end
+        end)
+    end
+end
+
+-- Отдельная функция для применения стана (вызывается из callback)
+local function applyStunKiller()
+    if not stunKillerEnabled then return end
+    
+    local RemoteStorage = game:GetService('ReplicatedStorage'):WaitForChild('RemoteEvents')
+    local Cheat = RemoteStorage:WaitForChild('NewPropertie')
+    
+    local function Obfuscate(TYPE, VALUE1, VALUE2)
+        local tablev = {}
+        local List = {"Bbh1O", "D9v8", "Dbh1O", "Dvh1O", "Dhv8"}
         
-        local function Obfuscate(TYPE, VALUE1, VALUE2)
-            local tablev = {}
-            local List = {"Bbh1O", "D9v8", "Dbh1O", "Dvh1O", "Dhv8"}
-            
-            TYPE = string.lower(TYPE)
-            
-            if TYPE == 'string' then
-                TYPE = 'S101'
-            elseif TYPE == 'object' then
-                TYPE = 'O101'
-            elseif TYPE == 'number' then
-                TYPE = 'I101'
-            elseif TYPE == 'bool' then
-                TYPE = 'B101'
-            elseif TYPE == "destroy" or TYPE == "REMOVE" then
-                VALUE2 = nil
-                TYPE = "D101"
-            end
-            
-            local Packaged = {
-                ['C22'] = TYPE;
-                ['C21'] = VALUE1;
-                ['C20'] = VALUE2;
-            }
-            
-            for _,key in pairs(List) do
-                tablev[key] = Packaged
-            end
-            
-            Cheat:FireServer(tablev)
+        TYPE = string.lower(TYPE)
+        
+        if TYPE == 'string' then
+            TYPE = 'S101'
+        elseif TYPE == 'object' then
+            TYPE = 'O101'
+        elseif TYPE == 'number' then
+            TYPE = 'I101'
+        elseif TYPE == 'bool' then
+            TYPE = 'B101'
+        elseif TYPE == "destroy" or TYPE == "REMOVE" then
+            VALUE2 = nil
+            TYPE = "D101"
         end
         
-        stunKillerConnection = UserInputService.InputBegan:Connect(function(Keycode, Chat)
-            if Chat then return end
-            if Keycode.KeyCode == Enum.KeyCode.F then
-                for _, b in pairs(game.Players:GetPlayers()) do
-                    if b.Team and b.Team.Name:lower():find("killer") then
-                        Obfuscate("string", b.Backpack.Scripts.values.Stunned.Kind, "Wiggle")
-                        Obfuscate("bool", b.Backpack.Scripts.values.Stunned, true)
+        local Packaged = {
+            ['C22'] = TYPE;
+            ['C21'] = VALUE1;
+            ['C20'] = VALUE2;
+        }
+        
+        for _,key in pairs(List) do
+            tablev[key] = Packaged
+        end
+        
+        Cheat:FireServer(tablev)
+    end
+    
+    for _, b in pairs(game.Players:GetPlayers()) do
+        if b.Team and b.Team.Name:lower():find("killer") then
+            if b.Backpack and b.Backpack:FindFirstChild("Scripts") then
+                local scripts = b.Backpack.Scripts
+                if scripts and scripts:FindFirstChild("values") then
+                    local values = scripts.values
+                    if values and values:FindFirstChild("Stunned") then
+                        Obfuscate("string", values.Stunned.Kind, "Wiggle")
+                        Obfuscate("bool", values.Stunned, true)
                     end
                 end
             end
-        end)
-    else
-        if stunKillerConnection then
-            stunKillerConnection:Disconnect()
-            stunKillerConnection = nil
         end
     end
 end
@@ -1768,12 +1780,11 @@ local function teleportForward()
     char:PivotTo(CFrame.new(newPos + Vector3.new(0,2,0)) * char:GetPivot().Rotation)
 end
 
--- NAF (No Anims Freeze) - только Toggle режим
+-- NAF - агрессивный вариант без остановки анимаций
 local nafEnabled = false
 local nafConnection = nil
-local nafMonitorConnection = nil
-local nafLastPlatformStand = false
-local nafLastAnchored = false
+local nafLastWalkSpeed = 16
+local nafLastJumpPower = 50
 
 local function updateNAF(enabled)
     nafEnabled = enabled
@@ -1783,81 +1794,71 @@ local function updateNAF(enabled)
         nafConnection = nil
     end
     
-    if nafMonitorConnection then
-        nafMonitorConnection:Disconnect()
-        nafMonitorConnection = nil
-    end
-    
     if enabled then
-        nafConnection = RunService.Heartbeat:Connect(function()
-            local player = Players.LocalPlayer
-            local char = player.Character
-            if not char then return end
-            
-            local humanoid = char:FindFirstChildOfClass("Humanoid")
-            local rootPart = char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart
-            
-            if humanoid and rootPart then
-                -- Сохраняем состояния только при первом включении
-                if not nafLastPlatformStand and not nafLastAnchored then
-                    nafLastPlatformStand = humanoid.PlatformStand
-                    nafLastAnchored = rootPart.Anchored
+        -- Сохраняем текущие значения при включении
+        local character = LocalPlayer.Character
+        if character then
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                if humanoid.WalkSpeed > 0 then
+                    nafLastWalkSpeed = humanoid.WalkSpeed
                 end
-                
-                -- Включаем движение
-                humanoid.PlatformStand = false
+                if humanoid.JumpPower > 0 then
+                    nafLastJumpPower = humanoid.JumpPower
+                end
+            end
+        end
+        
+        nafConnection = RunService.RenderStepped:Connect(function()
+            local character = LocalPlayer.Character
+            if not character then return end
+            
+            -- Ищем все Humanoid'ы
+            for _, humanoid in pairs(character:GetDescendants()) do
+                if humanoid:IsA("Humanoid") then
+                    -- Сохраняем текущие положительные значения
+                    if humanoid.WalkSpeed > 0 then
+                        nafLastWalkSpeed = humanoid.WalkSpeed
+                    end
+                    
+                    if humanoid.JumpPower > 0 then
+                        nafLastJumpPower = humanoid.JumpPower
+                    end
+                    
+                    -- Восстанавливаем нулевые значения до сохраненных
+                    if humanoid.WalkSpeed == 0 then
+                        humanoid.WalkSpeed = nafLastWalkSpeed
+                    end
+                    
+                    if humanoid.JumpPower == 0 then
+                        humanoid.JumpPower = nafLastJumpPower
+                    end
+                    
+                    -- Предотвращаем другие ограничения движения
+                    humanoid.PlatformStand = false
+                    humanoid.AutoRotate = true
+                    
+                    -- Предотвращаем состояния, которые блокируют движение
+                    local state = humanoid:GetState()
+                    if state == Enum.HumanoidStateType.FallingDown or
+                       state == Enum.HumanoidStateType.Ragdoll or
+                       state == Enum.HumanoidStateType.PlatformStanding then
+                        humanoid:ChangeState(Enum.HumanoidStateType.Running)
+                    end
+                end
+            end
+            
+            -- Работаем с корневой частью
+            local rootPart = character:FindFirstChild("HumanoidRootPart")
+            if rootPart then
                 rootPart.Anchored = false
                 rootPart.CanCollide = true
-                
-                -- Принудительно меняем состояние
-                humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
-                task.wait(0.05)
-                humanoid:ChangeState(Enum.HumanoidStateType.Running)
             end
         end)
         
-        -- Мониторинг для поддержания состояния
-        nafMonitorConnection = RunService.Heartbeat:Connect(function()
-            local player = Players.LocalPlayer
-            local char = player.Character
-            if not char then return end
-            
-            local humanoid = char:FindFirstChildOfClass("Humanoid")
-            local rootPart = char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart
-            
-            if humanoid and rootPart then
-                if humanoid.PlatformStand == true then
-                    humanoid.PlatformStand = false
-                end
-                
-                if rootPart.Anchored == true then
-                    rootPart.Anchored = false
-                end
-            end
-        end)
+        warn("[NAF] Включена - защита от ограничений движения")
     else
-        -- Восстанавливаем предыдущие состояния
-        local player = Players.LocalPlayer
-        local char = player.Character
-        if char then
-            local humanoid = char:FindFirstChildOfClass("Humanoid")
-            local rootPart = char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart
-            
-            if humanoid then
-                humanoid.PlatformStand = nafLastPlatformStand
-            end
-            
-            if rootPart then
-                rootPart.Anchored = nafLastAnchored
-            end
-            
-            if humanoid then
-                humanoid:ChangeState(Enum.HumanoidStateType.Running)
-            end
-            
-            nafLastPlatformStand = false
-            nafLastAnchored = false
-        end
+        warn("[NAF] Выключена")
     end
 end
 
@@ -2643,7 +2644,7 @@ Create("TextLabel", {
     Position = UDim2.new(0, 20, 0, 20),
     Size = UDim2.new(0, 140, 0, 30),
     Font = Enum.Font.GothamBold,
-    Text = "yeban.cc 1.0",
+    Text = "yeban.cc 1.1",
     TextColor3 = Theme.Accent,
     TextSize = 22,
     TextXAlignment = Enum.TextXAlignment.Left
@@ -4305,10 +4306,46 @@ AddKey(SurvivorSide, "Fly", {
 AddKey(SurvivorSide, "Noclip", {
     mode = "Toggle", 
     callback = function(state)
-        if state == true and not noclipEnabled then
-            toggleNoclip()
-        elseif state == false and noclipEnabled then
-            toggleNoclip()
+        if state == true then
+            -- При нажатии ВКЛЮЧАЕМ
+            if not noclipEnabled then
+                noclipEnabled = true
+                -- Запускаем цикл NoClip
+                noclipConnection = game:GetService("RunService").Stepped:Connect(function()
+                    local character = LocalPlayer.Character
+                    if character then
+                        for _, part in ipairs(character:GetDescendants()) do
+                            if part:IsA("BasePart") then
+                                part.CanCollide = false
+                                part.CanTouch = false
+                                part.CanQuery = false
+                            end
+                        end
+                    end
+                end)
+                warn("[NoClip] Включен (Hold)")
+            end
+        else
+            -- При отпускании ВЫКЛЮЧАЕМ
+            if noclipEnabled then
+                noclipEnabled = false
+                if noclipConnection then
+                    noclipConnection:Disconnect()
+                    noclipConnection = nil
+                end
+                -- Восстанавливаем коллизии
+                local character = LocalPlayer.Character
+                if character then
+                    for _, part in ipairs(character:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CanCollide = true
+                            part.CanTouch = true
+                            part.CanQuery = true
+                        end
+                    end
+                end
+                warn("[NoClip] Выключен (Hold)")
+            end
         end
     end
 })
@@ -4322,15 +4359,19 @@ AddPlayerAction(SurvivorSide, "Hit Someone", function(players, isAll)
 end)
 
 AddKey(SurvivorSide, "Stun Killer", {
-    mode = "Hold", 
+    mode = "Toggle",  -- Изменено с Hold на Toggle
     callback = function(state)
-        if state == true and not stunKillerEnabled then
-            toggleStunKiller()
-        elseif state == false and stunKillerEnabled then
-            toggleStunKiller()
+        if state == true then
+            -- Включаем режим стана при нажатии бинда
+            stunKillerEnabled = true
+            -- Применяем стан сразу
+            applyStunKiller()
+        else
+            -- Выключаем режим стана
+            stunKillerEnabled = false
         end
     end,
-    onlyHold = true
+    onlyToggle = true  -- Изменено с onlyHold на onlyToggle
 })
 
 local KillerSide = AddPanel(R_Right, "Killer Side")
