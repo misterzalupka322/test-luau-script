@@ -1929,7 +1929,7 @@ local function updateEmoteWheel(enabled)
                 {name = "CoffinWalkout", id = 126771729094882},
                 {name = "TheRobot", id = 83514960413286},
                 {name = "RusDance", id = 119473524290403},
-                {name = "SlalomStyle", id = 137139412185781},
+                {name = "FrightFunk", id = 111355126129291},
                 {name = "Zany", id = 90683763183723},
                 {name = "ElectroSwing", id = 137750876111662},
                 {name = "BillyBounce", id = 133394554631338}
@@ -1942,14 +1942,14 @@ local function updateEmoteWheel(enabled)
                 {name = "Xavier", id = 111079103818250},
                 {name = "Flying", id = 127571436160081},
                 {name = "Backflip", id = 133675142555339},
-                {name = "FestaNoBrasil", id = 82516443009513},
+                {name = "CrissCross", id = 77044871585499},
                 {name = "RideDaPony", id = 119284187579961}
             },
             {
                 {name = "PeacemakerBounce", id = 111906563478881},
                 {name = "WhatYouWant", id = 115781688996859},
                 {name = "RaceCar", id = 72382226286301},
-                {name = "IcySpicyJumping", id = 118896295981144},
+                {name = "BestMates", id = 71192538790916},
                 {name = "Shake", id = 103913447080306},
                 {name = "BoogieDown", id = 99662142344622},
                 {name = "DefaultDance", id = 101011728520473},
@@ -5486,3 +5486,4 @@ TweenService:Create(Main, TweenInfo.new(0.6, Enum.EasingStyle.Quart, Enum.Easing
     Size = UDim2.fromOffset(750, 550),
     GroupTransparency = 0
 }):Play()
+
