@@ -1950,7 +1950,7 @@ local function updateEmoteWheel(enabled)
                 {name = "WhatYouWant", id = 115781688996859},
                 {name = "RaceCar", id = 72382226286301},
                 {name = "BestMates", id = 71192538790916},
-                {name = "Shake", id = 103913447080306},
+                {name = "GangnamStyle", id = 129764254213842},
                 {name = "BoogieDown", id = 99662142344622},
                 {name = "DefaultDance", id = 101011728520473},
                 {name = "Rambunctious", id = 129991743366120},
@@ -5486,4 +5486,5 @@ TweenService:Create(Main, TweenInfo.new(0.6, Enum.EasingStyle.Quart, Enum.Easing
     Size = UDim2.fromOffset(750, 550),
     GroupTransparency = 0
 }):Play()
+
 
