@@ -1,7 +1,3 @@
--- Hyperion UI Remake v7 (Fixed Transparency & CanvasGroup)
--- Optimized for Roblox
--- Updated with ESP Modules
--- Added: FOV Changer, Aspect Ratio Changer, Free Camera, Flash Progress, Inf Item Charges
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -1424,7 +1420,7 @@ local function toggleFlight()
                     local up = Vector3.new(0, 1, 0)
                     
                     local direction = Vector3.new(0, 0, 0)
-                    local speed = 25
+                    local speed = 37
                     
                     if UserInputService:IsKeyDown(Enum.KeyCode.W) then direction = direction + forward end
                     if UserInputService:IsKeyDown(Enum.KeyCode.S) then direction = direction - forward end
@@ -1771,13 +1767,27 @@ local function updateVaultSpeedChanger(enabled, value)
 end
 
 local function teleportForward()
-    local player = Players.LocalPlayer
+    local player = game.Players.LocalPlayer
     local char = player.Character
     if not char then return end
     
-    local look = char:GetPivot().LookVector
-    local newPos = char:GetPivot().Position + look * 12
-    char:PivotTo(CFrame.new(newPos + Vector3.new(0,2,0)) * char:GetPivot().Rotation)
+    local hrp = char.HumanoidRootPart
+    
+    -- Получаем направление камеры
+    local camera = workspace.CurrentCamera
+    local cameraLook = camera.CFrame.LookVector
+    
+    -- Имитируем "падение" - античит часто разрешает телепорт в воздухе
+    hrp.Velocity = Vector3.new(0, -5, 0)
+    
+    task.wait(0.05) -- Небольшая задержка
+    
+    -- Телепорт по направлению камеры
+    local newPos = hrp.Position + cameraLook * 12
+    hrp.CFrame = CFrame.new(newPos + Vector3.new(0, 2, 0)) * hrp.CFrame.Rotation
+    
+    -- Возвращаем нормальное падение
+    hrp.Velocity = Vector3.new(0, -5, 0)
 end
 
 -- NAF (No Anims Freeze) - только Toggle режим
@@ -2656,7 +2666,7 @@ Create("TextLabel", {
     Position = UDim2.new(0, 20, 0, 20),
     Size = UDim2.new(0, 140, 0, 30),
     Font = Enum.Font.GothamBold,
-    Text = "yeban.cc 1.1",
+    Text = "yeban.cc 1.2",
     TextColor3 = Theme.Accent,
     TextSize = 22,
     TextXAlignment = Enum.TextXAlignment.Left
@@ -4235,7 +4245,7 @@ AddKey(MovementPanel, "Speed Changer", {
     end
 })
 
-AddSlider(MovementPanel, "SC itself", 5, 30, 15, function(value)
+AddSlider(MovementPanel, "SC itself", 5, 100, 15, function(value)
     fixedSpeedValue = value
     if fixedSpeedEnabled then
         updateFixedSpeedChanger(true, value)
@@ -5486,5 +5496,4 @@ TweenService:Create(Main, TweenInfo.new(0.6, Enum.EasingStyle.Quart, Enum.Easing
     Size = UDim2.fromOffset(750, 550),
     GroupTransparency = 0
 }):Play()
-
 
