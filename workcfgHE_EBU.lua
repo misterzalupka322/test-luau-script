@@ -1658,6 +1658,29 @@ local function dropPlayer(player)
     end
 end
 
+--// Функция для изменения HealthState
+local function setHealthState(value)
+    local player = LocalPlayer
+    if not player then return end
+    
+    local backpack = player:FindFirstChild("Backpack")
+    if not backpack then return end
+    
+    local scripts = backpack:FindFirstChild("Scripts")
+    if not scripts then return end
+    
+    local values = scripts:FindFirstChild("values")
+    if not values then return end
+    
+    local healthState = values:FindFirstChild("HealthState")
+    if not healthState then return end
+    
+    -- Меняем значение
+    healthState.Value = tostring(value)
+    
+    warn("[HealthState] Установлено значение: " .. tostring(value))
+end
+
 --// LEGIT XYETA
 
 -- Fixed Speed Changer (Toggle/Hold биндер)
@@ -1883,6 +1906,62 @@ local function updateNAF(enabled)
     end
 end
 
+--// Auto Moonwalk States
+local autoMoonwalkEnabled = false
+local autoMoonwalkCurrentYaw = 0
+local autoMoonwalkConnection = nil
+
+local function updateAutoMoonwalk(enabled)
+    autoMoonwalkEnabled = enabled
+    
+    if autoMoonwalkConnection then
+        autoMoonwalkConnection:Disconnect()
+        autoMoonwalkConnection = nil
+    end
+    
+    if enabled then
+        autoMoonwalkConnection = RunService.RenderStepped:Connect(function(deltaTime)
+            local Character = LocalPlayer.Character
+            if not Character then return end
+            
+            local RootPart = Character:FindFirstChild("HumanoidRootPart")
+            local Humanoid = Character:FindFirstChild("Humanoid")
+            
+            if RootPart and Humanoid then
+                if Humanoid.MoveDirection.Magnitude > 0.1 then
+                    -- Базовый вектор: строго против движения
+                    local moveDir = Humanoid.MoveDirection
+                    local targetLook = -moveDir
+                    
+                    -- Генерация "шума" для имитации A/D
+                    local AD_SPEED = 35
+                    local AD_INTENSITY = 0.8
+                    local SMOOTHNESS = 0.9
+                    local wiggleAngle = math.sin(tick() * AD_SPEED) * AD_INTENSITY
+                    
+                    -- Вычисляем целевой угол поворота (yaw) из вектора targetLook
+                    local targetYaw = math.atan2(-targetLook.X, -targetLook.Z) + wiggleAngle
+                    
+                    -- Плавно интерполируем текущий угол к целевому
+                    local difference = (targetYaw - autoMoonwalkCurrentYaw) % (2*math.pi)
+                    if difference > math.pi then
+                        difference = difference - 2*math.pi
+                    end
+                    
+                    autoMoonwalkCurrentYaw = autoMoonwalkCurrentYaw + difference * (1 - SMOOTHNESS) * deltaTime * 60
+                    
+                    -- Создаем CFrame с текущим углом
+                    local finalCFrame = CFrame.new(RootPart.Position) * CFrame.Angles(0, autoMoonwalkCurrentYaw, 0)
+                    
+                    -- Применяем
+                    RootPart.CFrame = finalCFrame
+                end
+            end
+        end)
+    else
+        autoMoonwalkCurrentYaw = 0
+    end
+end
 
 --// Emote Wheel (VISUAL 1:1 REPLICA + FIXED LOGIC)
 local emoteWheelGui = nil
@@ -2666,7 +2745,7 @@ Create("TextLabel", {
     Position = UDim2.new(0, 20, 0, 20),
     Size = UDim2.new(0, 140, 0, 30),
     Font = Enum.Font.GothamBold,
-    Text = "yeban.cc 1.2",
+    Text = "yeban.cc 1.3",
     TextColor3 = Theme.Accent,
     TextSize = 22,
     TextXAlignment = Enum.TextXAlignment.Left
@@ -3174,6 +3253,187 @@ local function AddPlayerAction(parent, name, callback)
 
         task.delay(0.5, function()
             -- АНИМАЦИЯ ВЫКЛЮЧЕНИЯ: Чекбокс + Текст (возврат к SubText)
+            TweenService:Create(Fill, TweenInfo.new(0.2), {Size = UDim2.fromOffset(0, 0)}):Play()
+            TweenService:Create(Label, TweenInfo.new(0.2), {TextColor3 = Theme.SubText}):Play()
+            isProcessing = false
+        end)
+    end)
+
+    return Holder
+end
+
+local function AddDropdown(parent, name, options, callback)
+    local selectedOption = options[1] and options[1].value or ""
+    local isProcessing = false
+    local isOpen = false
+
+    local Holder = Create("Frame", { Parent = parent, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 25), ZIndex = 10 })
+
+    -- Label с возможностью анимации цвета
+    local Label = Create("TextLabel", {
+        Name = "ItemName",
+        Parent = Holder,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(0.3, 0, 1, 0),
+        Font = Enum.Font.GothamMedium,
+        Text = name,
+        TextColor3 = Theme.SubText,
+        TextSize = 12,
+        TextXAlignment = Enum.TextXAlignment.Left
+    })
+
+    local DropdownBtn = Create("TextButton", {
+        Parent = Holder,
+        BackgroundColor3 = Theme.Input,
+        Position = UDim2.new(0.4, 0, 0, 0),
+        Size = UDim2.new(0.48, 0, 1, 0),
+        Text = "",
+        AutoButtonColor = false,
+        ZIndex = 11
+    }, { Create("UICorner", {CornerRadius = UDim.new(0, 6)}) })
+
+    local DisplayText = Create("TextLabel", {
+        Parent = DropdownBtn,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 10, 0, 0),
+        Size = UDim2.new(1, -30, 1, 0),
+        Font = Enum.Font.Gotham,
+        Text = options[1] and options[1].text or "Select",
+        TextColor3 = Theme.Text,
+        TextSize = 12,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ZIndex = 12
+    })
+
+    local Arrow = Create("TextLabel", {
+        Parent = DropdownBtn,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(1, -25, 0, 0),
+        Size = UDim2.new(0, 20, 1, 0),
+        Text = "▼",
+        TextColor3 = Theme.SubText,
+        TextSize = 10,
+        Font = Enum.Font.Gotham,
+        ZIndex = 12
+    })
+
+    local ListContainer = Create("Frame", {
+        Parent = Holder,
+        BackgroundColor3 = Theme.Input,
+        Position = UDim2.new(0.4, 0, 1, 3),
+        Size = UDim2.new(0.48, 0, 0, 0),
+        ClipsDescendants = true,
+        Visible = false,
+        ZIndex = 100
+    }, {
+        Create("UICorner", {CornerRadius = UDim.new(0, 6)}),
+        Create("UIListLayout", {SortOrder = Enum.SortOrder.LayoutOrder})
+    })
+
+    local function CloseDropdown(instant)
+        isOpen = false
+        if instant then
+            Arrow.Rotation = 0
+            ListContainer.Size = UDim2.new(0.48, 0, 0, 0)
+            ListContainer.Visible = false
+            Holder.ZIndex = 10
+        else
+            TweenService:Create(Arrow, TweenInfo.new(0.3), {Rotation = 0}):Play()
+            local closeTween = TweenService:Create(ListContainer, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {Size = UDim2.new(0.48, 0, 0, 0)})
+            closeTween:Play()
+            closeTween.Completed:Connect(function()
+                if not isOpen then 
+                    ListContainer.Visible = false 
+                    Holder.ZIndex = 10 
+                end
+            end)
+        end
+    end
+
+    DropdownBtn.MouseButton1Click:Connect(function()
+        if isOpen then
+            CloseDropdown()
+            OpenedDropdown = nil
+        else
+            if OpenedDropdown then OpenedDropdown(true) end
+            isOpen = true
+            OpenedDropdown = CloseDropdown
+            Holder.ZIndex = 100
+            ListContainer.Visible = true
+            
+            for _, child in pairs(ListContainer:GetChildren()) do 
+                if child:IsA("TextButton") then child:Destroy() end 
+            end
+
+            for _, option in ipairs(options) do
+                local b = Create("TextButton", {
+                    Parent = ListContainer,
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 0, 25),
+                    Text = "  " .. option.text,
+                    TextColor3 = Theme.SubText,
+                    TextSize = 12,
+                    Font = Enum.Font.Gotham,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    ZIndex = 101
+                })
+                b.MouseButton1Click:Connect(function()
+                    selectedOption = option.value
+                    DisplayText.Text = option.text
+                    CloseDropdown()
+                    OpenedDropdown = nil
+                end)
+            end
+            
+            local targetHeight = math.min(#options * 25, 150)
+            TweenService:Create(Arrow, TweenInfo.new(0.3), {Rotation = 180}):Play()
+            TweenService:Create(ListContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                Size = UDim2.new(0.48, 0, 0, targetHeight)
+            }):Play()
+        end
+    end)
+
+    -- ЧЕКБОКС для применения
+    local CheckboxFrame = Create("Frame", {
+        Parent = Holder,
+        BackgroundColor3 = Theme.Input,
+        Position = UDim2.new(1, 0, 0.5, 0),
+        AnchorPoint = Vector2.new(1, 0.5),
+        Size = UDim2.fromOffset(18, 18),
+        ZIndex = 11
+    }, { Create("UICorner", {CornerRadius = UDim.new(0, 4)}) })
+
+    local Fill = Create("Frame", {
+        Parent = CheckboxFrame,
+        BackgroundColor3 = Theme.Accent,
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Size = UDim2.fromOffset(0, 0),
+        ZIndex = 12
+    }, { Create("UICorner", {CornerRadius = UDim.new(0, 2)}) })
+
+    local ActionBtn = Create("TextButton", {
+        Parent = CheckboxFrame,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 1, 0),
+        Text = "",
+        ZIndex = 13
+    })
+
+    ActionBtn.MouseButton1Click:Connect(function()
+        if isProcessing then return end
+        isProcessing = true
+
+        -- Анимация включения
+        TweenService:Create(Fill, TweenInfo.new(0.2), {Size = UDim2.fromOffset(12, 12)}):Play()
+        TweenService:Create(Label, TweenInfo.new(0.2), {TextColor3 = Theme.Text}):Play()
+        
+        if callback then
+            callback(selectedOption)
+        end
+
+        task.delay(0.5, function()
+            -- Анимация выключения
             TweenService:Create(Fill, TweenInfo.new(0.2), {Size = UDim2.fromOffset(0, 0)}):Play()
             TweenService:Create(Label, TweenInfo.new(0.2), {TextColor3 = Theme.SubText}):Play()
             isProcessing = false
@@ -4281,6 +4541,14 @@ AddKey(MovementPanel, "NAF", {
     onlyToggle = true
 })
 
+AddKey(MovementPanel, "Auto Moonwalk", {
+    mode = "Toggle",
+    callback = function(state)
+        updateAutoMoonwalk(state)
+    end,
+    onlyToggle = true  -- Только Toggle режим, без Hold
+})
+
 local UnnamedPanel = AddPanel(L_Right, "Unnamed")
 
 AddToggle(UnnamedPanel, "Emote Wheel (B)", false, function(state)
@@ -4378,6 +4646,14 @@ AddPlayerAction(SurvivorSide, "Hit Someone", function(players, isAll)
     else
         hitPlayer(players)
     end
+end)
+
+AddDropdown(SurvivorSide, "HealthState", {
+    {text = "Healthy (2)", value = "2"},
+    {text = "Injured (1)", value = "1"},
+    {text = "Dying (0)", value = "0"}
+}, function(selectedValue)
+    setHealthState(selectedValue)
 end)
 
 AddKey(SurvivorSide, "Stun Killer", {
@@ -4498,12 +4774,12 @@ end)
 local V_Left, V_Right = CreatePage("VisualsMain")
 local SurvivorESP = AddPanel(V_Left, "Survivors ESP")
 
-AddESPToggle(SurvivorESP, "Chams", Color3.fromHex("#AFEEEE"), function(enabled, color, outlineColor)
+AddESPToggle(SurvivorESP, "SurvChams", Color3.fromHex("#AFEEEE"), function(enabled, color, outlineColor)
     ESPStates.Survivor.Chams = {Enabled = enabled, Color = color, Outline = outlineColor}
     updateSurvivorChams(enabled, color, outlineColor)
 end)
 
-AddESPToggle(SurvivorESP, "Skeleton", Color3.fromHex("#AFEEEE"), function(enabled, color, outlineColor)
+AddESPToggle(SurvivorESP, "Skeletons", Color3.fromHex("#AFEEEE"), function(enabled, color, outlineColor)
     ESPStates.Survivor.Skeleton = {Enabled = enabled, Color = color, Outline = outlineColor}
     updateSurvivorSkeleton(enabled, color, outlineColor)
 end)
@@ -4513,14 +4789,14 @@ AddESPSizeToggle(SurvivorESP, "Names", Color3.fromHex("#AFEEEE"), function(enabl
     updateSurvivorNames(enabled, color, outlineColor, selectedSize)
 end)
 
-AddESPSizeToggle(SurvivorESP, "Distance", Color3.fromHex("#AFEEEE"), function(enabled, color, outlineColor, selectedSize)
+AddESPSizeToggle(SurvivorESP, "Distances", Color3.fromHex("#AFEEEE"), function(enabled, color, outlineColor, selectedSize)
     ESPStates.Survivor.Distance = {Enabled = enabled, Color = color, Outline = outlineColor, Size = selectedSize}
     updateSurvivorDistance(enabled, color, outlineColor, selectedSize)
 end)
 
 local KillerESP = AddPanel(V_Left, "Killer ESP")
 
-AddESPToggle(KillerESP, "Chams", Color3.fromHex("#A5260A"), function(enabled, color, outlineColor)
+AddESPToggle(KillerESP, "KillerChams", Color3.fromHex("#A5260A"), function(enabled, color, outlineColor)
     ESPStates.Killer.Chams = {Enabled = enabled, Color = color, Outline = outlineColor}
     updateKillerChams(enabled, color, outlineColor)
 end)
@@ -4530,7 +4806,7 @@ AddESPToggle(KillerESP, "Skeleton", Color3.fromHex("#A5260A"), function(enabled,
     updateKillerSkeleton(enabled, color, outlineColor)
 end)
 
-AddESPSizeToggle(KillerESP, "Names", Color3.fromHex("#A5260A"), function(enabled, color, outlineColor, selectedSize)
+AddESPSizeToggle(KillerESP, "Name", Color3.fromHex("#A5260A"), function(enabled, color, outlineColor, selectedSize)
     ESPStates.Killer.Names = {Enabled = enabled, Color = color, Outline = outlineColor, Size = selectedSize}
     updateKillerNames(enabled, color, outlineColor, selectedSize)
 end)
@@ -4686,7 +4962,7 @@ local function GetConfigList()
     end
     
     if #configs == 0 then
-        return {"Legit_V1.json", "HvH_Public.json", "Private_Cfg.json"}
+        return {"No configs :P"}
     end
     
     return configs
