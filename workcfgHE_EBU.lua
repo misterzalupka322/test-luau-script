@@ -60,7 +60,14 @@ local MiscStates = {
     FreeCamera = {Enabled = false},
     FlashProgress = {Enabled = false},
     InfItemCharges = {Enabled = false},
-	OutfitChanger = {Enabled = false}
+	OutfitChanger = {Enabled = false},
+	ScratchMarks = {Enabled = false, Color = Color3.fromRGB(208, 23, 6)} 
+}
+
+local ScratchMarksModule = {
+    Connection = nil,
+    Folder = nil,
+    LastTick = 0
 }
 
 --// ESP Modules Storage
@@ -2691,6 +2698,139 @@ local function updateOutfitChanger(enabled)
     end
 end
 
+-- Scratch Marks с проверками из оригинала (без require)
+local function updateScratchMarks(enabled, color)
+    if ScratchMarksModule.Connection then
+        ScratchMarksModule.Connection:Disconnect()
+        ScratchMarksModule.Connection = nil
+    end
+    
+    if ScratchMarksModule.Folder then
+        ScratchMarksModule.Folder:Destroy()
+        ScratchMarksModule.Folder = nil
+    end
+    
+    if not enabled then return end
+    
+    local folder = Instance.new("Folder")
+    folder.Name = "ScratchMarks"
+    folder.Parent = workspace.CurrentCamera
+    ScratchMarksModule.Folder = folder
+    
+    -- Параметры следов (как в оригинале)
+    local directionsTable = {
+        Straight = { Direction = CFrame.Angles(0,0,0), Amount = 1, Range = 400, MaxSize = 35 },
+        Down = { Direction = CFrame.Angles(math.rad(-90),0,0), Amount = 5, Range = 420, MaxSize = 50 },
+        Right = { Direction = CFrame.Angles(0,math.rad(90),0), Amount = 1, Range = 400, MaxSize = 35 },
+        Back = { Direction = CFrame.Angles(0,math.rad(180),0), Amount = 1, Range = 400, MaxSize = 35 },
+        Left = { Direction = CFrame.Angles(0,math.rad(-90),0), Amount = 1, Range = 400, MaxSize = 35 },
+        Up = { Direction = CFrame.Angles(math.rad(90),0,0), Amount = 1, Range = 400, MaxSize = 55 },
+    }
+    local ScratchRange = 18
+    local ScratchFreq = 0.8
+    local MinSize = 10
+    local ScratchTime = 5
+    
+    -- Заглушка для проверки эффектов (пока всегда false, но можно доработать)
+    local function hasEffect(effectName)
+        -- Если знаешь, как в игре реализованы эффекты Hidden, Cloaked, Ghost,
+        -- можешь добавить проверки здесь (например, по атрибутам или объектам в персонаже).
+        return false
+    end
+    
+    local function createScratch()
+        local char = LocalPlayer.Character
+        if not char then return end
+        local humanoid = char:FindFirstChild("Humanoid")
+        local rootPart = char:FindFirstChild("HumanoidRootPart")
+        if not humanoid or not rootPart then return end
+        
+        -- Эффекты скрытности (если есть – следы не появляются)
+        if hasEffect("Hidden") or hasEffect("Cloaked") or hasEffect("Ghost") then
+            return
+        end
+        
+        -- Получаем доступ к значениям из Backpack (как в оригинале)
+        local backpack = LocalPlayer:FindFirstChild("Backpack")
+        if not backpack then return end
+        local scripts = backpack:FindFirstChild("Scripts")
+        if not scripts then return end
+        local values = scripts:FindFirstChild("values")
+        if not values then return end
+        
+        local healthState = values:FindFirstChild("HealthState")
+        local hooked = values:FindFirstChild("Hooked")
+        local shift = scripts:FindFirstChild("MovementSpeedScript") and scripts.MovementSpeedScript:FindFirstChild("Shift")
+        
+        if not healthState or not hooked or not shift then return end
+        
+        -- Проверка здоровья (должно быть > 0)
+        local healthVal = tonumber(healthState.Value)
+        if not healthVal or healthVal <= 0 then return end
+        
+        -- Проверка на крюке
+        if hooked.Value then return end
+        
+        -- Проверка движения
+        if humanoid.MoveDirection.Magnitude == 0 then return end
+        
+        -- Проверка бега (shift)
+        if not shift.Value then return end
+        
+        -- Частота
+        local currentTime = tick()
+        if currentTime - ScratchMarksModule.LastTick < ScratchFreq then return end
+        ScratchMarksModule.LastTick = currentTime
+        
+        -- Далее создание следов (без изменений)
+        local baseFrame = CFrame.new(char:GetPivot().Position)
+        
+        for _, dirTable in pairs(directionsTable) do
+            local ray = Ray.new(baseFrame.Position, (baseFrame * dirTable.Direction).LookVector * ScratchRange)
+            local part, hitPos = workspace:FindPartOnRayWithIgnoreList(ray, {folder, char})
+            
+            if part then
+                for i = 1, dirTable.Amount do
+                    local newPositionY = math.random(-dirTable.Range, dirTable.Range) / 100
+                    newPositionY = newPositionY - (newPositionY * math.random(0,1)) * 2
+                    
+                    local newPositionS = math.random(-dirTable.Range, dirTable.Range) / 100
+                    newPositionS = newPositionS - (newPositionS * math.random(0,1)) * 2
+                    
+                    local thisCFrame = CFrame.new(baseFrame.Position, hitPos)
+                    local dist = (baseFrame.Position - hitPos).magnitude
+                    thisCFrame = thisCFrame * CFrame.new(0, 0, -dist) * CFrame.new(newPositionS, newPositionY, 0) * CFrame.Angles(0, 0, math.rad(math.random(0, 360)))
+                    
+                    local scratchPart = Instance.new("Part")
+                    scratchPart.Anchored = true
+                    scratchPart.CanCollide = false
+                    scratchPart.CanQuery = false
+                    scratchPart.Transparency = 1
+                    scratchPart.Material = Enum.Material.Neon
+                    scratchPart.Color = color or MiscStates.ScratchMarks.Color
+                    scratchPart.Name = "Scratch"
+                    scratchPart.Size = Vector3.new(math.random(MinSize, dirTable.MaxSize) / 10, 0.1, 0.1)
+                    scratchPart.CFrame = thisCFrame
+                    scratchPart.Parent = folder
+                    
+                    -- Появление
+                    local tween = TweenService:Create(scratchPart, TweenInfo.new(3), {Transparency = 0})
+                    tween:Play()
+                    
+                    -- Исчезновение
+                    task.delay(ScratchTime, function()
+                        local fadeTween = TweenService:Create(scratchPart, TweenInfo.new(3), {Transparency = 1})
+                        fadeTween:Play()
+                        fadeTween.Completed:Wait()
+                        scratchPart:Destroy()
+                    end)
+                end
+            end
+        end
+    end
+    
+    ScratchMarksModule.Connection = RunService.Heartbeat:Connect(createScratch)
+end
 
 --// UI SETUP XYETA 
 
@@ -2745,7 +2885,7 @@ Create("TextLabel", {
     Position = UDim2.new(0, 20, 0, 20),
     Size = UDim2.new(0, 140, 0, 30),
     Font = Enum.Font.GothamBold,
-    Text = "yeban.cc 1.3",
+    Text = "yeban.cc 1.4",
     TextColor3 = Theme.Accent,
     TextSize = 22,
     TextXAlignment = Enum.TextXAlignment.Left
@@ -4903,6 +5043,20 @@ AddToggle(CameraPanel, "Free Camera (SHIFT + P)", false, function(state)
     updateFreeCamera(state)
 end)
 
+-- Show Scratch Marks (вкл/выкл)
+AddToggle(CameraPanel, "Show SM", false, function(state)
+    MiscStates.ScratchMarks.Enabled = state
+    updateScratchMarks(state, MiscStates.ScratchMarks.Color)
+end)
+
+-- Выбор цвета следов (используем ESP-стиль, но чекбокс внутри не влияет на включение)
+AddESPToggle(CameraPanel, "SM Color", MiscStates.ScratchMarks.Color, function(enabled, color, outline)
+    MiscStates.ScratchMarks.Color = color
+    if MiscStates.ScratchMarks.Enabled then
+        updateScratchMarks(true, color)  -- перезапускаем с новым цветом
+    end
+end)
+
 local InterfacesPanel = AddPanel(VM_Left, "Interfaces")
 
 AddToggle(InterfacesPanel, "Show Flash Progress", false, function(state)
@@ -5772,4 +5926,3 @@ TweenService:Create(Main, TweenInfo.new(0.6, Enum.EasingStyle.Quart, Enum.Easing
     Size = UDim2.fromOffset(750, 550),
     GroupTransparency = 0
 }):Play()
-
