@@ -2698,7 +2698,7 @@ local function updateOutfitChanger(enabled)
     end
 end
 
--- Scratch Marks с проверками из оригинала (без require)
+-- Scratch Marks с проверками эффектов (Hidden, Cloaked, Ghost)
 local function updateScratchMarks(enabled, color)
     if ScratchMarksModule.Connection then
         ScratchMarksModule.Connection:Disconnect()
@@ -2731,10 +2731,16 @@ local function updateScratchMarks(enabled, color)
     local MinSize = 10
     local ScratchTime = 5
     
-    -- Заглушка для проверки эффектов (пока всегда false, но можно доработать)
+    -- Функция проверки эффектов через CodeModule
     local function hasEffect(effectName)
-        -- Если знаешь, как в игре реализованы эффекты Hidden, Cloaked, Ghost,
-        -- можешь добавить проверки здесь (например, по атрибутам или объектам в персонаже).
+        if CodeModule and type(CodeModule.GetEffect) == "function" then
+            local success, result = pcall(function()
+                return CodeModule:GetEffect(effectName, LocalPlayer)
+            end)
+            if success then
+                return result
+            end
+        end
         return false
     end
     
@@ -2745,12 +2751,12 @@ local function updateScratchMarks(enabled, color)
         local rootPart = char:FindFirstChild("HumanoidRootPart")
         if not humanoid or not rootPart then return end
         
-        -- Эффекты скрытности (если есть – следы не появляются)
+        -- Проверка эффектов скрытности (если есть – следы не появляются)
         if hasEffect("Hidden") or hasEffect("Cloaked") or hasEffect("Ghost") then
             return
         end
         
-        -- Получаем доступ к значениям из Backpack (как в оригинале)
+        -- Получаем значения из Backpack
         local backpack = LocalPlayer:FindFirstChild("Backpack")
         if not backpack then return end
         local scripts = backpack:FindFirstChild("Scripts")
@@ -2764,7 +2770,7 @@ local function updateScratchMarks(enabled, color)
         
         if not healthState or not hooked or not shift then return end
         
-        -- Проверка здоровья (должно быть > 0)
+        -- Проверка здоровья
         local healthVal = tonumber(healthState.Value)
         if not healthVal or healthVal <= 0 then return end
         
@@ -2782,7 +2788,7 @@ local function updateScratchMarks(enabled, color)
         if currentTime - ScratchMarksModule.LastTick < ScratchFreq then return end
         ScratchMarksModule.LastTick = currentTime
         
-        -- Далее создание следов (без изменений)
+        -- Создание следов
         local baseFrame = CFrame.new(char:GetPivot().Position)
         
         for _, dirTable in pairs(directionsTable) do
@@ -2813,11 +2819,9 @@ local function updateScratchMarks(enabled, color)
                     scratchPart.CFrame = thisCFrame
                     scratchPart.Parent = folder
                     
-                    -- Появление
                     local tween = TweenService:Create(scratchPart, TweenInfo.new(3), {Transparency = 0})
                     tween:Play()
                     
-                    -- Исчезновение
                     task.delay(ScratchTime, function()
                         local fadeTween = TweenService:Create(scratchPart, TweenInfo.new(3), {Transparency = 1})
                         fadeTween:Play()
@@ -2885,7 +2889,7 @@ Create("TextLabel", {
     Position = UDim2.new(0, 20, 0, 20),
     Size = UDim2.new(0, 140, 0, 30),
     Font = Enum.Font.GothamBold,
-    Text = "yeban.cc 1.4",
+    Text = "yeban.cc 1.5",
     TextColor3 = Theme.Accent,
     TextSize = 22,
     TextXAlignment = Enum.TextXAlignment.Left
@@ -4710,6 +4714,11 @@ AddToggle(UnnamedPanel, "Old Animations", false, function(state)
     updateOldAnimations(state)
 end)
 
+AddOneTimeToggle(UnnamedPanel, "Ban Yourself", function()
+    local player = game.Players.LocalPlayer
+    local healthState = player:WaitForChild("Backpack"):WaitForChild("Scripts"):WaitForChild("values"):WaitForChild("HealthState")
+    game:GetService("ReplicatedStorage").RemoteEvents.NewPropertie:FireServer({Bbh1O={C22="I101",C21=healthState,C20=3}})
+end)
 
 local R_Left, R_Right = CreatePage("Rage")
 local SurvivorSide = AddPanel(R_Left, "Survivor Side")
