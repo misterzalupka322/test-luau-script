@@ -1129,6 +1129,37 @@ local function updateGeneratorsProgress(enabled)
     ESPModules.Objects.GeneratorsProgress.ScreenGui = screenGui
 end
 
+--// Функция для удаления папок с аурами
+local AuraRemoverConnection = nil
+local function updateAuraRemover(enabled)
+    if AuraRemoverConnection then
+        AuraRemoverConnection:Disconnect()
+        AuraRemoverConnection = nil
+    end
+
+    if not enabled then return end
+
+    -- Функция удаления папки
+    local function checkAndDelete(obj)
+        if obj.Name == "Auras" or obj.Name == "Aura" then
+            -- Используем task.delay на случай, если папка должна наполниться перед удалением
+            task.delay(0.1, function()
+                if obj and obj.Parent then
+                    obj:Destroy()
+                end
+            end)
+        end
+    end
+
+    -- Удаляем существующие папки
+    for _, obj in ipairs(workspace:GetChildren()) do
+        checkAndDelete(obj)
+    end
+
+    -- Следим за новыми папками
+    AuraRemoverConnection = workspace.ChildAdded:Connect(checkAndDelete)
+end
+
 --// RAGE XYETA 
 
 --// Функция для Block All Hooks
@@ -1184,6 +1215,43 @@ local function updateBlockHooks(enabled)
                 end
             end
         end
+    end)
+end
+
+--// RAGE XYETA: Trap Remover
+local TrapRemoverConnection = nil
+
+local function updateTrapRemover(enabled)
+    -- Сначала всегда отключаем старый "слушатель", если он был
+    if TrapRemoverConnection then
+        TrapRemoverConnection:Disconnect()
+        TrapRemoverConnection = nil
+    end
+
+    -- Если функцию выключили, дальше не идем
+    if not enabled then return end
+
+    -- Внутренняя функция для удаления
+    local function processObject(obj)
+        if obj.Name:find("^Trap") then
+            -- Ждем чуть-чуть (0.1 сек), так как хитбокс может подгрузиться на долю секунды позже самой ловушки
+            task.delay(0.1, function()
+                local hitbox = obj:FindFirstChild("Hitbox")
+                if hitbox then
+                    hitbox:Destroy()
+                end
+            end)
+        end
+    end
+
+    -- Проверяем те ловушки, что уже стоят на карте
+    for _, child in ipairs(workspace:GetChildren()) do
+        processObject(child)
+    end
+
+    -- Включаем "слушатель" на появление новых объектов
+    TrapRemoverConnection = workspace.ChildAdded:Connect(function(child)
+        processObject(child)
     end)
 end
 
@@ -2012,22 +2080,22 @@ local function updateEmoteWheel(enabled)
                 {name = "Griddy", id = 71864055176836},
                 {name = "TakeTheL", id = 107795487146601},
                 {name = "SnoopsWalk", id = 110204898807330},
-                {name = "ElectroShuffle", id = 138727713064496},
-                {name = "Twerk", id = 71683179159204},
+                {name = "ElectroShuffle", id = 103948800984170},
+                {name = "Twerk", id = 77387643699357},
                 {name = "PopularVibe", id = 93062298566806},
                 {name = "OrangeJustice", id = 95127716920692},
                 {name = "Floss", id = 80550101607592},
                 {name = "Fresh", id = 137039451581216}
             },
             {
-                {name = "CaliforniaGirls", id = 96463900850916},
+                {name = "CaliforniaGirls", id = 111281033685433},
                 {name = "GetSturdy", id = 102571052202995},
                 {name = "CoffinWalkout", id = 126771729094882},
                 {name = "TheRobot", id = 83514960413286},
                 {name = "RusDance", id = 119473524290403},
-                {name = "FrightFunk", id = 111355126129291},
+                {name = "FrightFunk", id = 114093857053911},
                 {name = "Zany", id = 90683763183723},
-                {name = "ElectroSwing", id = 137750876111662},
+                {name = "ElectroSwing", id = 102507581389068},
                 {name = "BillyBounce", id = 133394554631338}
             },
             {
@@ -2038,7 +2106,7 @@ local function updateEmoteWheel(enabled)
                 {name = "Xavier", id = 111079103818250},
                 {name = "Flying", id = 127571436160081},
                 {name = "Backflip", id = 133675142555339},
-                {name = "CrissCross", id = 77044871585499},
+                {name = "CrissCross", id = 84758360646558},
                 {name = "RideDaPony", id = 119284187579961}
             },
             {
@@ -2836,6 +2904,26 @@ local function updateScratchMarks(enabled, color)
     ScratchMarksModule.Connection = RunService.Heartbeat:Connect(createScratch)
 end
 
+local Lighting = game:GetService("Lighting")
+local OriginalSkyColor = nil
+local OriginalFogColor = nil
+
+local function updateSkyColor(enabled, color)
+    local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+    if atm then
+        if OriginalSkyColor == nil then OriginalSkyColor = atm.Color end
+        atm.Color = enabled and color or OriginalSkyColor
+    end
+end
+
+local function updateFogColor(enabled, color)
+    local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+    if atm then
+        if OriginalFogColor == nil then OriginalFogColor = atm.Decay end
+        atm.Decay = enabled and color or OriginalFogColor
+    end
+end
+
 --// UI SETUP XYETA 
 
 --// UI Setup
@@ -2889,7 +2977,7 @@ Create("TextLabel", {
     Position = UDim2.new(0, 20, 0, 20),
     Size = UDim2.new(0, 140, 0, 30),
     Font = Enum.Font.GothamBold,
-    Text = "yeban.cc 1.5",
+    Text = "yeban.cc 1.6",
     TextColor3 = Theme.Accent,
     TextSize = 22,
     TextXAlignment = Enum.TextXAlignment.Left
@@ -4870,6 +4958,10 @@ AddKey(SurvivorSide, "Stun Killer", {
     onlyToggle = true
 })
 
+AddToggle(SurvivorSide, "Trap Immune", false, function(state)
+    updateTrapRemover(state)
+end)
+
 local KillerSide = AddPanel(R_Right, "Killer Side")
 
 AddOneTimeToggle(KillerSide, "Gate Never Open", function(enabled)
@@ -5022,6 +5114,9 @@ AddToggle(ObjectHighlight, "Generators Progress", false, function(enabled)
     updateGeneratorsProgress(enabled)
 end)
 
+AddToggle(ObjectHighlight, "Remove In-Game Auras", false, function(state)
+    updateAuraRemover(state)
+end)
 
 local VM_Left, VM_Right = CreatePage("VisualsMisc")
 local CameraPanel = AddPanel(VM_Left, "Camera")
@@ -5066,7 +5161,23 @@ AddESPToggle(CameraPanel, "SM Color", MiscStates.ScratchMarks.Color, function(en
     end
 end)
 
-local InterfacesPanel = AddPanel(VM_Left, "Interfaces")
+-- Добавь это там, где у тебя лежат конфиги (например, рядом с MiscStates)
+local SkyStates = {
+    Sky = {Enabled = false, Color = Color3.new(1, 1, 1)},
+    Fog = {Enabled = false, Color = Color3.new(1, 1, 1)}
+}
+
+-- Sky Color
+AddESPToggle(CameraPanel, "Sky Color", SkyStates.Sky.Color, function(enabled, color, outline)
+    updateSkyColor(enabled, color)
+end)
+
+-- Fog Color
+AddESPToggle(CameraPanel, "Fog Color", SkyStates.Fog.Color, function(enabled, color, outline)
+    updateFogColor(enabled, color)
+end)
+
+local InterfacesPanel = AddPanel(VM_Right, "Interfaces")
 
 AddToggle(InterfacesPanel, "Show Flash Progress", false, function(state)
     updateFlashProgress(state)
